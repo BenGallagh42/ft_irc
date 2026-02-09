@@ -18,6 +18,7 @@ INC_DIR = includes
 SRCS = $(SRC_DIR)/main.cpp \
        $(SRC_DIR)/Server.cpp \
        $(SRC_DIR)/Client.cpp \
+       $(SRC_DIR)/Channel.cpp \
        $(SRC_DIR)/utils.cpp
 
 # Fichiers objets (conversion .cpp -> .o)
