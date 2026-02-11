@@ -17,12 +17,19 @@ INC_DIR = includes
 # Fichiers sources
 SRCS = $(SRC_DIR)/main.cpp \
        $(SRC_DIR)/Server.cpp \
+       $(SRC_DIR)/ServerUtils.cpp \
+       $(SRC_DIR)/commands/CommandRouter.cpp \
+       $(SRC_DIR)/commands/AuthCommands.cpp \
+       $(SRC_DIR)/commands/ChannelCommands.cpp \
+       $(SRC_DIR)/commands/MessageCommands.cpp \
+       $(SRC_DIR)/commands/OperatorCommands.cpp \
        $(SRC_DIR)/Client.cpp \
        $(SRC_DIR)/Channel.cpp \
        $(SRC_DIR)/utils.cpp
 
-# Fichiers objets (conversion .cpp -> .o)
-OBJS = $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+# Fichiers objets (remplace srcs/ par objs/ et .cpp par .o)
+OBJS = $(SRCS:$(SRC_DIR)/%=$(OBJ_DIR)/%)
+OBJS := $(OBJS:.cpp=.o)
 
 # Couleurs pour l'affichage
 GREEN = \033[0;32m
@@ -37,12 +44,13 @@ RESET = \033[0m
 # Règle par défaut : compile tout
 all: $(NAME)
 
-# Crée le répertoire objs s'il n'existe pas
+# Crée les répertoires objs et objs/commands s'ils n'existent pas
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)
-	@echo "$(YELLOW)Created objs directory$(RESET)"
+	@mkdir -p $(OBJ_DIR)/commands
+	@echo "$(YELLOW)Created objs directories$(RESET)"
 
-# Compile un fichier .cpp en .o
+# Compile un fichier .cpp en .o (gère les sous-dossiers)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	@echo "$(GREEN)Compiling $<...$(RESET)"
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
