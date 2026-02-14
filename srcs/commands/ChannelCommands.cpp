@@ -1,10 +1,6 @@
 #include "Server.hpp"
 #include <iostream>  // Pour std::cout
 
-// ============================================================================
-//                         HANDLERS DE CHANNELS
-// ============================================================================
-
 // Gère la commande JOIN : rejoindre un salon
 // Format : JOIN #channel [key]
 void Server::handleJoin(Client& client, const std::string& params)

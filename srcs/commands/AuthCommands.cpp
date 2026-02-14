@@ -2,10 +2,6 @@
 #include <iostream>  // Pour std::cout
 #include <cctype>    // Pour std::isalpha(), std::isalnum()
 
-// ============================================================================
-//                      HANDLERS D'AUTHENTIFICATION
-// ============================================================================
-
 // Gère la commande PASS : vérifie le mot de passe du serveur
 // Format : PASS <password>
 void Server::handlePass(Client& client, const std::string& params)
@@ -63,7 +59,6 @@ void Server::handleNick(Client& client, const std::string& params)
         nickname = nickname.substr(0, space);
 
     // Valider le format du nickname
-    // Premier caractère : doit être une lettre ou un caractère spécial IRC
     if (!std::isalpha(nickname[0]) && nickname[0] != '[' && nickname[0] != ']'
         && nickname[0] != '\\' && nickname[0] != '^' && nickname[0] != '_'
         && nickname[0] != '{' && nickname[0] != '}' && nickname[0] != '|')
@@ -72,7 +67,6 @@ void Server::handleNick(Client& client, const std::string& params)
         return;
     }
 
-    // Caractères suivants : lettres, chiffres, ou caractères spéciaux IRC
     for (size_t i = 1; i < nickname.size(); ++i)
     {
         char c = nickname[i];
@@ -102,12 +96,14 @@ void Server::handleNick(Client& client, const std::string& params)
     // Si le client était déjà enregistré (changement de pseudo)
     if (client.isRegistered() && !oldNick.empty())
     {
-        // Notifier tous les channels où le client est présent
         std::string nickMsg = ":" + oldNick + "!" + client.getUsername() + "@localhost NICK :" + nickname + "\r\n";
+        sendToClient(client, nickMsg);
+        
+        // Notifier tous les channels où le client est présent
         for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
         {
             if (it->second->isMember(&client))
-                it->second->broadcastMessageAll(nickMsg);
+                it->second->broadcastMessage(nickMsg, &client);
         }
     }
 

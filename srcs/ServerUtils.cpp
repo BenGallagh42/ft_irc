@@ -4,8 +4,7 @@
 #include <cctype>        // Pour std::toupper()
 
 // ============================================================================
-//                           ENVOI DE MESSAGES
-// ============================================================================
+// ENVOI DE MESSAGES
 
 // Envoie un message brut à un client via son socket
 void Server::sendToClient(Client& client, const std::string& message)
@@ -39,17 +38,23 @@ std::string Server::getClientPrefix(Client& client)
 }
 
 // ============================================================================
-//                           PARSING DE COMMANDES
-// ============================================================================
+// PARSING DE COMMANDES
 
 // Extrait le premier mot (la commande IRC) du message et le met en majuscules
 std::string Server::extractCommand(const std::string& message)
 {
-    // Trouver le premier espace pour séparer la commande des paramètres
-    size_t space = message.find(' ');
-    std::string cmd = (space != std::string::npos) ? message.substr(0, space) : message;
+    // Trim les espaces/tabs au début
+    size_t start = message.find_first_not_of(" \t\r");
+    if (start == std::string::npos)
+        return "";  // Message vide
+    
+    std::string trimmed = message.substr(start);
+    
+    // Trouver le premier espace
+    size_t space = trimmed.find_first_of(" \t");
+    std::string cmd = (space != std::string::npos) ? trimmed.substr(0, space) : trimmed;
 
-    // Convertir en majuscules pour comparaison insensible à la casse
+    // Convertir en majuscules
     for (size_t i = 0; i < cmd.size(); ++i)
         cmd[i] = std::toupper(cmd[i]);
 
@@ -59,20 +64,29 @@ std::string Server::extractCommand(const std::string& message)
 // Extrait tout après la commande (les paramètres)
 std::string Server::extractParams(const std::string& message)
 {
+    // Trim les espaces au début
+    size_t start = message.find_first_not_of(" \t\r");
+    if (start == std::string::npos)
+        return "";
+    
+    std::string trimmed = message.substr(start);
+    
     // Trouver le premier espace
-    size_t space = message.find(' ');
-
-    // Si pas d'espace, il n'y a pas de paramètres
+    size_t space = trimmed.find_first_of(" \t");
     if (space == std::string::npos)
         return "";
 
-    // Retourner tout après l'espace
-    return message.substr(space + 1);
+    // Retourner tout après l'espace, en trimmant les espaces de début
+    std::string params = trimmed.substr(space + 1);
+    size_t paramStart = params.find_first_not_of(" \t");
+    if (paramStart == std::string::npos)
+        return "";
+    
+    return params.substr(paramStart);
 }
 
 // ============================================================================
-//                           RECHERCHE ET CLEANUP
-// ============================================================================
+// RECHERCHE ET CLEANUP
 
 // Cherche un client par son pseudo dans la map des clients
 Client* Server::findClientByNickname(const std::string& nickname)

@@ -1,10 +1,6 @@
 #include "Server.hpp"
 #include <iostream>  // Pour std::cout
 
-// ============================================================================
-//                         ROUTEUR DE COMMANDES
-// ============================================================================
-
 // Traite une commande IRC reçue d'un client (routeur principal)
 void Server::processCommand(Client& client, const std::string& command)
 {

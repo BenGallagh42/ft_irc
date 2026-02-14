@@ -23,15 +23,15 @@ int main(int argc, char** argv)
     {
         std::cerr << "Usage: " << argv[0] << " <port> <password>" << std::endl;
         std::cerr << "Example: " << argv[0] << " 6667 mypassword" << std::endl;
-        return 1;
+        return (1);
     }
     
     // Convertir le port en entier
     int port = std::atoi(argv[1]);
-    if (port <= 0 || port > 65535)
+    if (port <= 0 || port > 65535) // 16 bits = 2^16 = 65536 valeurs possibles
     {
         std::cerr << "Error: Invalid port (must be 1-65535)" << std::endl;
-        return 1;
+        return (1);
     }
     
     // Récupérer le mot de passe
@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     if (password.empty())
     {
         std::cerr << "Error: Password cannot be empty" << std::endl;
-        return 1;
+        return (1);
     }
     
     // Installer les gestionnaires de signaux
@@ -58,8 +58,8 @@ int main(int argc, char** argv)
     catch (const std::exception& e)
     {
         std::cerr << "Exception: " << e.what() << std::endl;
-        return 1;
+        return (1);
     }
     
-    return 0;
+    return (0);
 }

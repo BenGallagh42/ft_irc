@@ -1,9 +1,5 @@
 #include "Server.hpp"
 
-// ============================================================================
-//                         HANDLER DE MESSAGES
-// ============================================================================
-
 // Gère la commande PRIVMSG : envoyer un message à un channel ou un utilisateur
 // Format : PRIVMSG <target> :<message>
 void Server::handlePrivmsg(Client& client, const std::string& params)
@@ -51,7 +47,7 @@ void Server::handlePrivmsg(Client& client, const std::string& params)
 
         Channel* channel = it->second;
 
-        // Vérifier que le client est membre du channel
+        // Le client doit être membre du channel
         if (!channel->isMember(&client))
         {
             sendNumericReply(client, "442", target + " :You're not on that channel");

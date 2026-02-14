@@ -16,37 +16,37 @@ Client::~Client()
 // Retourne le file descriptor du socket client
 int Client::getFd() const
 {
-    return _fd;
+    return (_fd);
 }
 
 // Retourne le pseudo du client
 std::string Client::getNickname() const
 {
-    return _nickname;
+    return (_nickname);
 }
 
 // Retourne le nom d'utilisateur du client
 std::string Client::getUsername() const
 {
-    return _username;
+    return (_username);
 }
 
 // Retourne le buffer de données reçues
 std::string Client::getBuffer() const
 {
-    return _buffer;
+    return (_buffer);
 }
 
 // Retourne true si le client a fourni le bon mot de passe
 bool Client::isAuthenticated() const
 {
-    return _authenticated;
+    return (_authenticated);
 }
 
 // Retourne true si le client a complété NICK + USER
 bool Client::isRegistered() const
 {
-    return _registered;
+    return (_registered);
 }
 
 // Définit le pseudo du client

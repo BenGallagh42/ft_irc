@@ -9,8 +9,7 @@
 #include <iostream>      // Pour std::cout, std::cerr
 
 // ============================================================================
-//                            CONSTRUCTEUR / DESTRUCTEUR
-// ============================================================================
+// CONSTRUCTEUR / DESTRUCTEUR
 
 // Constructeur : initialise le serveur avec un port et un mot de passe
 Server::Server(int port, const std::string& password)
@@ -30,8 +29,7 @@ Server::~Server()
 }
 
 // ============================================================================
-//                           CONFIGURATION DU SERVEUR
-// ============================================================================
+// CONFIGURATION DU SERVEUR
 
 // Crée et configure le socket serveur
 void Server::setupServer()
@@ -91,8 +89,7 @@ void Server::setupServer()
 }
 
 // ============================================================================
-//                          GESTION DES CONNEXIONS
-// ============================================================================
+// GESTION DES CONNEXIONS
 
 // Accepte une nouvelle connexion client
 void Server::acceptNewClient()
@@ -150,6 +147,11 @@ void Server::readFromClient(int poll_index)
 
     // Récupérer le fd depuis poll_fds et le client depuis la map
     int client_fd = _poll_fds[poll_index].fd;
+    
+    // Vérifier que le client existe dans la map
+    if (_clients.find(client_fd) == _clients.end())
+        return;  // Le client a été déconnecté entre-temps
+    
     Client* client = _clients[client_fd];
 
     // Recevoir les données
@@ -200,7 +202,13 @@ void Server::readFromClient(int poll_index)
 
         // Traiter la commande si elle n'est pas vide
         if (!command.empty())
+        {
             processCommand(*client, command);
+            
+            // Si le client a été déconnecté (QUIT), on arrête ici
+            if (_clients.find(client_fd) == _clients.end())
+                return;  // Le client n'existe plus, on sort
+        }
     }
 
     // Remettre à jour le buffer (données incomplètes restantes)
@@ -233,8 +241,7 @@ void Server::disconnectClient(int poll_index)
 }
 
 // ============================================================================
-//                          BOUCLE PRINCIPALE
-// ============================================================================
+// BOUCLE PRINCIPALE
 
 // Boucle principale du serveur
 void Server::run()
