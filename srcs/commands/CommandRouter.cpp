@@ -6,7 +6,6 @@ void Server::processCommand(Client& client, const std::string& command)
 {
     std::cout << "[COMMAND] FD " << client.getFd() << ": " << command << std::endl;
 
-    // Extraire la commande et les paramètres
     std::string cmd = extractCommand(command);
     std::string params = extractParams(command);
 

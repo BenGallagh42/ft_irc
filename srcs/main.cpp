@@ -6,7 +6,6 @@
 // Pointeur global pour gérer Ctrl+C proprement
 Server* g_server = NULL;
 
-// Gestionnaire de signal : appelé quand on appuie sur Ctrl+C
 void signal_handler(int signum)
 {
     (void)signum;
@@ -18,7 +17,6 @@ void signal_handler(int signum)
 
 int main(int argc, char** argv)
 {
-    // Vérifier le nombre d'arguments
     if (argc != 3)
     {
         std::cerr << "Usage: " << argv[0] << " <port> <password>" << std::endl;
@@ -26,7 +24,6 @@ int main(int argc, char** argv)
         return (1);
     }
     
-    // Convertir le port en entier
     int port = std::atoi(argv[1]);
     if (port <= 0 || port > 65535) // 16 bits = 2^16 = 65536 valeurs possibles
     {
@@ -34,7 +31,6 @@ int main(int argc, char** argv)
         return (1);
     }
     
-    // Récupérer le mot de passe
     std::string password = argv[2];
     if (password.empty())
     {
@@ -42,14 +38,12 @@ int main(int argc, char** argv)
         return (1);
     }
     
-    // Installer les gestionnaires de signaux
-    signal(SIGINT, signal_handler);   // Ctrl+C
-    signal(SIGTERM, signal_handler);  // kill
-    signal(SIGQUIT, signal_handler);  // Ctrl+D
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGQUIT, signal_handler);
     
     try
     {
-        // Créer et lancer le serveur
         Server server(port, password);
         g_server = &server;
         

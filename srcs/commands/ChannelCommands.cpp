@@ -2,17 +2,14 @@
 #include <iostream>  // Pour std::cout
 
 // Gère la commande JOIN : rejoindre un salon
-// Format : JOIN #channel [key]
 void Server::handleJoin(Client& client, const std::string& params)
 {
-    // Vérifier que le nom du channel est fourni
     if (params.empty())
     {
         sendNumericReply(client, "461", "JOIN :Not enough parameters");
         return;
     }
 
-    // Extraire le nom du channel et la clé optionnelle
     std::string channelName = params;
     std::string key = "";
     size_t space = params.find(' ');
@@ -22,7 +19,6 @@ void Server::handleJoin(Client& client, const std::string& params)
         key = params.substr(space + 1);
     }
 
-    // Vérifier que le nom du channel commence par #
     if (channelName.empty() || channelName[0] != '#')
     {
         sendNumericReply(client, "476", channelName + " :Bad Channel Mask");
@@ -35,12 +31,11 @@ void Server::handleJoin(Client& client, const std::string& params)
 
     if (it != _channels.end())
     {
-        // Le channel existe déjà
         channel = it->second;
 
         // Vérifier si le client est déjà membre
         if (channel->isMember(&client))
-            return;  // Déjà membre, ne rien faire
+            return;
 
         // Vérifier le mode invitation seulement (+i)
         if (channel->isInviteOnly() && !channel->isInvited(&client))
@@ -66,27 +61,20 @@ void Server::handleJoin(Client& client, const std::string& params)
     }
     else
     {
-        // Le channel n'existe pas : le créer
         channel = new Channel(channelName);
         _channels[channelName] = channel;
 
-        // Le créateur du channel est automatiquement opérateur
         channel->addOperator(&client);
 
         std::cout << "[CHANNEL] Created: " << channelName << std::endl;
     }
 
-    // Ajouter le client au channel
     channel->addMember(&client);
-
-    // Retirer le client de la liste des invités (il a rejoint)
     channel->removeInvited(&client);
 
-    // Envoyer la notification JOIN à tous les membres du channel
     std::string joinMsg = getClientPrefix(client) + " JOIN " + channelName + "\r\n";
     channel->broadcastMessageAll(joinMsg);
 
-    // Si le channel a un topic, l'envoyer au nouveau membre
     if (!channel->getTopic().empty())
         sendNumericReply(client, "332", channelName + " :" + channel->getTopic());
 
@@ -95,15 +83,12 @@ void Server::handleJoin(Client& client, const std::string& params)
     std::vector<Client*>& members = channel->getMembers();
     for (size_t i = 0; i < members.size(); ++i)
     {
-        // Ajouter un espace entre les noms
         if (i > 0)
             namesList += " ";
 
-        // Préfixer @ pour les opérateurs
         if (channel->isOperator(members[i]))
             namesList += "@";
 
-        // Ajouter le pseudo du membre
         namesList += members[i]->getNickname();
     }
 
@@ -115,17 +100,14 @@ void Server::handleJoin(Client& client, const std::string& params)
 }
 
 // Gère la commande PART : quitter un salon
-// Format : PART #channel [:message]
 void Server::handlePart(Client& client, const std::string& params)
 {
-    // Vérifier que les paramètres sont fournis
     if (params.empty())
     {
         sendNumericReply(client, "461", "PART :Not enough parameters");
         return;
     }
 
-    // Extraire le nom du channel et le message optionnel
     std::string channelName = params;
     std::string message = "";
     size_t space = params.find(' ');
@@ -133,7 +115,6 @@ void Server::handlePart(Client& client, const std::string& params)
     {
         channelName = params.substr(0, space);
         message = params.substr(space + 1);
-        // Retirer le : au début du message si présent
         if (!message.empty() && message[0] == ':')
             message = message.substr(1);
     }
@@ -161,10 +142,7 @@ void Server::handlePart(Client& client, const std::string& params)
         partMsg += " :" + message;
     partMsg += "\r\n";
 
-    // Envoyer le message PART à tous les membres (y compris le client qui part)
     channel->broadcastMessageAll(partMsg);
-
-    // Retirer le client du channel
     channel->removeMember(&client);
 
     // Si le channel est vide, le supprimer

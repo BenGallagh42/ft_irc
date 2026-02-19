@@ -3,14 +3,11 @@
 // Constructeur : initialise un nouveau client avec son file descriptor
 Client::Client(int fd) : _fd(fd), _authenticated(false), _registered(false)
 {
-    // Le client démarre non-authentifié et non-enregistré
 }
 
 // Destructeur
 Client::~Client()
 {
-    // Pas de mémoire dynamique à libérer
-    // Le file descriptor sera fermé par le serveur
 }
 
 // Retourne le file descriptor du socket client

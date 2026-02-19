@@ -7,17 +7,12 @@
 // Constructeur : initialise un channel avec son nom et les modes par défaut
 Channel::Channel(const std::string& name) : _name(name), _inviteOnly(false), _topicRestricted(false), _userLimit(0)
 {
-    // Le channel démarre sans topic, sans clé, sans limite
 }
 
 // Destructeur
 Channel::~Channel()
 {
-    // Pas de mémoire dynamique à libérer
-    // Les Client* sont gérés par le Server
 }
-
-// --- Getters ---
 
 // Retourne le nom du channel
 std::string Channel::getName() const
@@ -61,8 +56,6 @@ std::vector<Client*>& Channel::getMembers()
     return _members;
 }
 
-// --- Setters ---
-
 // Définit le sujet du channel
 void Channel::setTopic(const std::string& topic)
 {
@@ -98,7 +91,6 @@ void Channel::setUserLimit(int limit)
 // Ajoute un client à la liste des membres du channel
 void Channel::addMember(Client* client)
 {
-    // Vérifier que le client n'est pas déjà membre
     if (!isMember(client))
         _members.push_back(client);
 }
@@ -106,12 +98,10 @@ void Channel::addMember(Client* client)
 // Retire un client de la liste des membres du channel
 void Channel::removeMember(Client* client)
 {
-    // Chercher le client dans la liste des membres
     std::vector<Client*>::iterator it = std::find(_members.begin(), _members.end(), client);
     if (it != _members.end())
         _members.erase(it);
 
-    // Retirer aussi des opérateurs et des invités si présent
     removeOperator(client);
     removeInvited(client);
 }
@@ -119,7 +109,6 @@ void Channel::removeMember(Client* client)
 // Vérifie si un client est membre du channel
 bool Channel::isMember(Client* client) const
 {
-    // Parcourir la liste des membres pour trouver le client
     return std::find(_members.begin(), _members.end(), client) != _members.end();
 }
 
@@ -128,7 +117,6 @@ bool Channel::isMember(Client* client) const
 // Ajoute un client comme opérateur du channel
 void Channel::addOperator(Client* client)
 {
-    // Vérifier que le client n'est pas déjà opérateur
     if (!isOperator(client))
         _operators.push_back(client);
 }
@@ -136,7 +124,6 @@ void Channel::addOperator(Client* client)
 // Retire un client de la liste des opérateurs
 void Channel::removeOperator(Client* client)
 {
-    // Chercher le client dans la liste des opérateurs
     std::vector<Client*>::iterator it = std::find(_operators.begin(), _operators.end(), client);
     if (it != _operators.end())
         _operators.erase(it);
@@ -145,7 +132,6 @@ void Channel::removeOperator(Client* client)
 // Vérifie si un client est opérateur du channel
 bool Channel::isOperator(Client* client) const
 {
-    // Parcourir la liste des opérateurs pour trouver le client
     return std::find(_operators.begin(), _operators.end(), client) != _operators.end();
 }
 
@@ -154,7 +140,6 @@ bool Channel::isOperator(Client* client) const
 // Ajoute un client à la liste des invités du channel
 void Channel::addInvited(Client* client)
 {
-    // Vérifier que le client n'est pas déjà invité
     if (!isInvited(client))
         _invited.push_back(client);
 }
@@ -162,14 +147,12 @@ void Channel::addInvited(Client* client)
 // Vérifie si un client est dans la liste des invités
 bool Channel::isInvited(Client* client) const
 {
-    // Parcourir la liste des invités pour trouver le client
     return std::find(_invited.begin(), _invited.end(), client) != _invited.end();
 }
 
 // Retire un client de la liste des invités
 void Channel::removeInvited(Client* client)
 {
-    // Chercher le client dans la liste des invités
     std::vector<Client*>::iterator it = std::find(_invited.begin(), _invited.end(), client);
     if (it != _invited.end())
         _invited.erase(it);
@@ -180,13 +163,11 @@ void Channel::removeInvited(Client* client)
 // Envoie un message à tous les membres du channel sauf l'expéditeur
 void Channel::broadcastMessage(const std::string& message, Client* sender)
 {
-    // Parcourir tous les membres du channel
     for (size_t i = 0; i < _members.size(); ++i)
     {
         // Ne pas envoyer le message à l'expéditeur
         if (_members[i] != sender)
         {
-            // Envoyer le message via le socket du membre
             send(_members[i]->getFd(), message.c_str(), message.length(), 0);
         }
     }
@@ -195,7 +176,6 @@ void Channel::broadcastMessage(const std::string& message, Client* sender)
 // Envoie un message à TOUS les membres du channel (y compris l'expéditeur)
 void Channel::broadcastMessageAll(const std::string& message)
 {
-    // Parcourir tous les membres du channel
     for (size_t i = 0; i < _members.size(); ++i)
     {
         // Envoyer le message via le socket du membre

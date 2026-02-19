@@ -4,10 +4,8 @@
 #include <cstdlib>    // Pour std::atoi()
 
 // Gère la commande KICK : expulser un utilisateur d'un channel
-// Format : KICK #channel <user> [:<reason>]
 void Server::handleKick(Client& client, const std::string& params)
 {
-    // Vérifier que les paramètres sont fournis
     if (params.empty())
     {
         sendNumericReply(client, "461", "KICK :Not enough parameters");
@@ -37,7 +35,6 @@ void Server::handleKick(Client& client, const std::string& params)
     {
         targetNick = remaining.substr(0, space);
         reason = remaining.substr(space + 1);
-        // Retirer le : au début de la raison si présent
         if (!reason.empty() && reason[0] == ':')
             reason = reason.substr(1);
     }
@@ -99,7 +96,6 @@ void Server::handleKick(Client& client, const std::string& params)
 }
 
 // Gère la commande INVITE : inviter un utilisateur dans un channel
-// Format : INVITE <nickname> #channel
 void Server::handleInvite(Client& client, const std::string& params)
 {
     // Extraire nickname et channel
@@ -172,10 +168,8 @@ void Server::handleInvite(Client& client, const std::string& params)
 }
 
 // Gère la commande TOPIC : voir ou changer le sujet d'un channel
-// Format : TOPIC #channel [:<new topic>]
 void Server::handleTopic(Client& client, const std::string& params)
 {
-    // Vérifier que les paramètres sont fournis
     if (params.empty())
     {
         sendNumericReply(client, "461", "TOPIC :Not enough parameters");
@@ -192,7 +186,6 @@ void Server::handleTopic(Client& client, const std::string& params)
         channelName = params.substr(0, space);
         newTopic = params.substr(space + 1);
         hasTopic = true;
-        // Retirer le : au début du topic si présent
         if (!newTopic.empty() && newTopic[0] == ':')
             newTopic = newTopic.substr(1);
     }
@@ -225,7 +218,6 @@ void Server::handleTopic(Client& client, const std::string& params)
     else
     {
         // Mode modification : changer le topic
-
         // Vérifier si le mode +t est actif (seuls les ops peuvent changer le topic)
         if (channel->isTopicRestricted() && !channel->isOperator(&client))
         {
@@ -245,7 +237,6 @@ void Server::handleTopic(Client& client, const std::string& params)
 }
 
 // Gère la commande MODE : changer les modes d'un channel
-// Format : MODE #channel [+/-modes] [paramètres]
 void Server::handleMode(Client& client, const std::string& params)
 {
     // Vérifier que les paramètres sont fournis

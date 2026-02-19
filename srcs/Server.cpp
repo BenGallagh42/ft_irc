@@ -8,9 +8,6 @@
 #include <cerrno>        // Pour errno
 #include <iostream>      // Pour std::cout, std::cerr
 
-// ============================================================================
-// CONSTRUCTEUR / DESTRUCTEUR
-
 // Constructeur : initialise le serveur avec un port et un mot de passe
 Server::Server(int port, const std::string& password)
     : _server_fd(-1), _port(port), _password(password), _serverName("ft_irc"), _running(false)
@@ -18,7 +15,6 @@ Server::Server(int port, const std::string& password)
     std::cout << "=== IRC Server Initializing ===" << std::endl;
     std::cout << "Port: " << port << std::endl;
 
-    // Configurer et démarrer le socket serveur
     setupServer();
 }
 
@@ -27,9 +23,6 @@ Server::~Server()
 {
     stop();
 }
-
-// ============================================================================
-// CONFIGURATION DU SERVEUR
 
 // Crée et configure le socket serveur
 void Server::setupServer()
@@ -70,7 +63,6 @@ void Server::setupServer()
     }
 
     // 6. Mettre le socket en mode écoute
-    // 10 = taille de la file d'attente (max 10 connexions en attente)
     if (listen(_server_fd, 10) < 0)
     {
         close(_server_fd);
@@ -87,9 +79,6 @@ void Server::setupServer()
     std::cout << "Server socket created and listening" << std::endl;
     std::cout << "==================================" << std::endl;
 }
-
-// ============================================================================
-// GESTION DES CONNEXIONS
 
 // Accepte une nouvelle connexion client
 void Server::acceptNewClient()
@@ -145,12 +134,11 @@ void Server::readFromClient(int poll_index)
     char buffer[512];
     memset(buffer, 0, sizeof(buffer));
 
-    // Récupérer le fd depuis poll_fds et le client depuis la map
     int client_fd = _poll_fds[poll_index].fd;
     
     // Vérifier que le client existe dans la map
     if (_clients.find(client_fd) == _clients.end())
-        return;  // Le client a été déconnecté entre-temps
+        return;
     
     Client* client = _clients[client_fd];
 
@@ -159,7 +147,6 @@ void Server::readFromClient(int poll_index)
 
     if (bytes_read < 0)
     {
-        // En mode non-bloquant, EAGAIN = pas de données (normal)
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
             std::cerr << "Recv error from FD " << client_fd << ": " << strerror(errno) << std::endl;
@@ -170,14 +157,12 @@ void Server::readFromClient(int poll_index)
 
     if (bytes_read == 0)
     {
-        // Le client a fermé la connexion
         std::cout << "\n[DISCONNECTION]" << std::endl;
         std::cout << "  FD: " << client_fd << std::endl;
         disconnectClient(poll_index);
         return;
     }
 
-    // Ajouter les données au buffer du client
     buffer[bytes_read] = '\0';
     client->appendToBuffer(std::string(buffer));
 
@@ -190,28 +175,23 @@ void Server::readFromClient(int poll_index)
     // Chercher les commandes terminées par \r\n ou \n
     while ((pos = client_buffer.find('\n')) != std::string::npos)
     {
-        // Extraire la commande (tout avant le \n)
         std::string command = client_buffer.substr(0, pos);
 
-        // Supprimer \r si présent à la fin (format IRC : \r\n)
         if (!command.empty() && command[command.length() - 1] == '\r')
             command = command.substr(0, command.length() - 1);
 
-        // Avancer dans le buffer (après le \n)
         client_buffer = client_buffer.substr(pos + 1);
 
-        // Traiter la commande si elle n'est pas vide
         if (!command.empty())
         {
             processCommand(*client, command);
             
             // Si le client a été déconnecté (QUIT), on arrête ici
             if (_clients.find(client_fd) == _clients.end())
-                return;  // Le client n'existe plus, on sort
+                return;
         }
     }
 
-    // Remettre à jour le buffer (données incomplètes restantes)
     client->clearBuffer();
     client->appendToBuffer(client_buffer);
 }
@@ -219,29 +199,18 @@ void Server::readFromClient(int poll_index)
 // Déconnecte un client et le retire des listes
 void Server::disconnectClient(int poll_index)
 {
-    // Récupérer le fd et le client
     int client_fd = _poll_fds[poll_index].fd;
     Client* client = _clients[client_fd];
 
-    // Retirer le client de tous les channels
     removeClientFromAllChannels(client);
-
-    // Fermer le socket
     close(client_fd);
-
-    // Libérer la mémoire et retirer de la map
     delete client;
     _clients.erase(client_fd);
-
-    // Retirer de poll_fds
     _poll_fds.erase(_poll_fds.begin() + poll_index);
 
     std::cout << "  Client removed" << std::endl;
     std::cout << "  Remaining clients: " << _clients.size() << std::endl;
 }
-
-// ============================================================================
-// BOUCLE PRINCIPALE
 
 // Boucle principale du serveur
 void Server::run()
@@ -255,7 +224,6 @@ void Server::run()
     while (_running)
     {
         // poll() surveille tous les file descriptors
-        // -1 = timeout infini (attend qu'un événement arrive)
         int poll_count = poll(&_poll_fds[0], _poll_fds.size(), -1);
 
         if (poll_count < 0)
@@ -269,21 +237,16 @@ void Server::run()
         // Parcourir tous les file descriptors surveillés
         for (size_t i = 0; i < _poll_fds.size(); ++i)
         {
-            // Vérifier s'il y a un événement sur ce FD
             if (_poll_fds[i].revents & POLLIN)
             {
                 if (_poll_fds[i].fd == _server_fd)
                 {
-                    // Événement sur le serveur = nouvelle connexion
                     acceptNewClient();
                 }
                 else
                 {
-                    // Événement sur un client = données reçues
                     size_t size_before = _poll_fds.size();
                     readFromClient(i);
-                    // Si un client a été déconnecté, poll_fds a rétréci
-                    // On décrémente i pour ne pas sauter le prochain client
                     if (_poll_fds.size() < size_before)
                         --i;
                 }
