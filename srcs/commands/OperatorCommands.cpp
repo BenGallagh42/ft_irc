@@ -237,212 +237,225 @@ void Server::handleTopic(Client& client, const std::string& params)
 }
 
 // Gère la commande MODE : changer les modes d'un channel
-void Server::handleMode(Client& client, const std::string& params)
-{
-    // Vérifier que les paramètres sont fournis
-    if (params.empty())
-    {
+void Server::handleMode(Client& client, const std::string& params) {
+    // Parser: MODE <channel> <modes> [<params>...]
+    
+    std::istringstream iss(params);
+    std::string target;
+    std::string modeString;
+    
+    // Extraire le channel
+    if (!(iss >> target)) {
         sendNumericReply(client, "461", "MODE :Not enough parameters");
         return;
     }
-
-    // Extraire la cible (channel ou user)
-    std::string target = params;
-    size_t space = params.find(' ');
-    if (space != std::string::npos)
-        target = params.substr(0, space);
-
-    // Si la cible n'est pas un channel (ne commence pas par #)
-    if (target.empty() || target[0] != '#')
-    {
-        // MODE utilisateur : on ignore silencieusement
+    
+    // Extraire la chaîne de modes
+    if (!(iss >> modeString)) {
+        // Pas de modes fournis → afficher les modes actuels
+        if (target[0] == '#') {
+            std::map<std::string, Channel*>::iterator it = _channels.find(target);
+            if (it == _channels.end()) {
+                sendNumericReply(client, "403", target + " :No such channel");
+                return;
+            }
+            
+            Channel* channel = it->second;
+            if (!channel->isMember(&client)) {
+                sendNumericReply(client, "442", target + " :You're not on that channel");
+                return;
+            }
+            
+            // Construire la chaîne des modes actifs
+            std::string activeModes = "+";
+            std::string modeParams = "";
+            
+            if (channel->isInviteOnly())
+                activeModes += "i";
+            if (channel->isTopicRestricted())
+                activeModes += "t";
+            if (!channel->getKey().empty()) {
+                activeModes += "k";
+                modeParams += " " + channel->getKey();
+            }
+            if (channel->getUserLimit() > 0) {
+                activeModes += "l";
+                std::ostringstream oss;
+                oss << channel->getUserLimit();
+                modeParams += " " + oss.str();
+            }
+            
+            if (activeModes == "+")
+                activeModes = "+";
+            
+            sendNumericReply(client, "324", target + " " + activeModes + modeParams);
+            return;
+        }
+        sendNumericReply(client, "461", "MODE :Not enough parameters");
         return;
     }
-
+    
+    // Vérifier que c'est un channel
+    if (target[0] != '#') {
+        sendNumericReply(client, "501", ":Unknown MODE flag");
+        return;
+    }
+    
     // Vérifier que le channel existe
     std::map<std::string, Channel*>::iterator it = _channels.find(target);
-    if (it == _channels.end())
-    {
+    if (it == _channels.end()) {
         sendNumericReply(client, "403", target + " :No such channel");
         return;
     }
-
+    
     Channel* channel = it->second;
-
-    // Vérifier que le client est membre du channel
-    if (!channel->isMember(&client))
-    {
+    
+    // Vérifier que le client est dans le channel
+    if (!channel->isMember(&client)) {
         sendNumericReply(client, "442", target + " :You're not on that channel");
         return;
     }
-
-    // Si pas d'autres paramètres, afficher les modes actuels
-    if (space == std::string::npos)
-    {
-        // Construire la chaîne des modes actifs
-        std::string modes = "+";
-        if (channel->isInviteOnly())
-            modes += "i";
-        if (channel->isTopicRestricted())
-            modes += "t";
-        if (!channel->getKey().empty())
-            modes += "k";
-        if (channel->getUserLimit() > 0)
-            modes += "l";
-
-        sendNumericReply(client, "324", target + " " + modes);
-        return;
-    }
-
+    
     // Vérifier que le client est opérateur
-    if (!channel->isOperator(&client))
-    {
+    if (!channel->isOperator(&client)) {
         sendNumericReply(client, "482", target + " :You're not channel operator");
         return;
     }
-
-    // Extraire le mode string et les paramètres
-    std::string modeParams = params.substr(space + 1);
-    std::string modeString = modeParams;
-    std::string modeArgs = "";
-
-    space = modeParams.find(' ');
-    if (space != std::string::npos)
-    {
-        modeString = modeParams.substr(0, space);
-        modeArgs = modeParams.substr(space + 1);
+    
+    // Extraire les paramètres restants
+    std::vector<std::string> modeParams;
+    std::string param;
+    while (iss >> param) {
+        modeParams.push_back(param);
     }
-
+    
     // Parser et appliquer les modes
-    bool adding = true;  // true = +, false = -
-	bool validModeFound = false;
-    for (size_t i = 0; i < modeString.size(); ++i)
-    {
+    bool adding = true;
+    size_t paramIndex = 0;
+    std::string broadcastModes = "";
+    std::string broadcastParams = "";
+    bool validModeFound = false;
+    
+    for (size_t i = 0; i < modeString.size(); ++i) {
         char mode = modeString[i];
-
-        if (mode == '+')
-        {
+        
+        if (mode == '+') {
             adding = true;
+            if (broadcastModes.empty() || broadcastModes[broadcastModes.size() - 1] != '+')
+                broadcastModes += '+';
             continue;
         }
-        else if (mode == '-')
-        {
+        else if (mode == '-') {
             adding = false;
+            if (broadcastModes.empty() || broadcastModes[broadcastModes.size() - 1] != '-')
+                broadcastModes += '-';
             continue;
         }
-
+        
         // Appliquer le mode
-        switch (mode)
-        {
-            case 'i':  // Invite-only
+        switch (mode) {
+            case 'i':
                 channel->setInviteOnly(adding);
-				validModeFound = true;
+                broadcastModes += 'i';
+                validModeFound = true;
                 break;
-
-            case 't':  // Topic restricted
+            
+            case 't':
                 channel->setTopicRestricted(adding);
-				validModeFound = true;
+                broadcastModes += 't';
+                validModeFound = true;
                 break;
-
-            case 'k':  // Key (password)
-                if (adding)
-                {
-                    // Extraire le premier mot comme password
-                    std::string key = modeArgs;
-                    size_t sp = key.find(' ');
-                    if (sp != std::string::npos)
-                        key = key.substr(0, sp);
-                    
-                    if (key.empty())
-                    {
+            
+            case 'k': {
+                if (adding) {
+                    // +k nécessite un paramètre
+                    if (paramIndex >= modeParams.size()) {
                         sendNumericReply(client, "461", "MODE +k :Not enough parameters");
                         continue;
                     }
+                    std::string key = modeParams[paramIndex++];
                     channel->setKey(key);
-                }
-                else
-                {
+                    broadcastModes += 'k';
+                    broadcastParams += " " + key;
+                } else {
+                    // -k
                     channel->setKey("");
+                    broadcastModes += 'k';
                 }
-				validModeFound = true;
-                break;
-
-            case 'o':  // Operator
-            {
-                // Extraire le nickname
-                std::string nick = modeArgs;
-                size_t sp = nick.find(' ');
-                if (sp != std::string::npos)
-                    nick = nick.substr(0, sp);
-
-                if (nick.empty())
-                {
-                    sendNumericReply(client, "461", "MODE +o :Not enough parameters");
-                    return;
-                }
-
-                Client* targetClient = findClientByNickname(nick);
-                if (!targetClient)
-                {
-                    sendNumericReply(client, "401", nick + " :No such nick/channel");
-                    return;
-                }
-
-                if (!channel->isMember(targetClient))
-                {
-                    sendNumericReply(client, "441", nick + " " + target + " :They aren't on that channel");
-                    return;
-                }
-
-                if (adding)
-                    channel->addOperator(targetClient);
-                else
-                    channel->removeOperator(targetClient);
-				validModeFound = true;
+                validModeFound = true;
                 break;
             }
-
-            case 'l':  // User limit
-                if (adding)
-                {
-                    // Extraire le nombre
-                    std::string limitStr = modeArgs;
-                    size_t sp = limitStr.find(' ');
-                    if (sp != std::string::npos)
-                        limitStr = limitStr.substr(0, sp);
-
-                    if (limitStr.empty())
-                    {
+            
+            case 'o': {
+                // +o/-o nécessite un paramètre (nickname)
+                if (paramIndex >= modeParams.size()) {
+                    sendNumericReply(client, "461", "MODE +o :Not enough parameters");
+                    continue;
+                }
+                
+                std::string targetNick = modeParams[paramIndex++];
+                Client* targetClient = findClientByNickname(targetNick);
+                
+                if (!targetClient) {
+                    sendNumericReply(client, "401", targetNick + " :No such nick/channel");
+                    continue;
+                }
+                
+                if (!channel->isMember(targetClient)) {
+                    sendNumericReply(client, "441", targetNick + " " + target + " :They aren't on that channel");
+                    continue;
+                }
+                
+                if (adding) {
+                    channel->addOperator(targetClient);
+                } else {
+                    channel->removeOperator(targetClient);
+                }
+                
+                broadcastModes += 'o';
+                broadcastParams += " " + targetNick;
+                validModeFound = true;
+                break;
+            }
+            
+            case 'l': {
+                if (adding) {
+                    // +l nécessite un paramètre (limite)
+                    if (paramIndex >= modeParams.size()) {
                         sendNumericReply(client, "461", "MODE +l :Not enough parameters");
                         continue;
                     }
-
+                    
+                    std::string limitStr = modeParams[paramIndex++];
                     int limit = std::atoi(limitStr.c_str());
-                    if (limit <= 0)
-                    {
-                        sendNumericReply(client, "461", "MODE +l :Invalid limit");
+                    
+                    if (limit <= 0) {
+                        sendNumericReply(client, "461", "MODE +l :Invalid user limit");
                         continue;
                     }
+                    
                     channel->setUserLimit(limit);
-                }
-                else
-                {
+                    broadcastModes += 'l';
+                    broadcastParams += " " + limitStr;
+                } else {
+                    // -l
                     channel->setUserLimit(0);
+                    broadcastModes += 'l';
                 }
-				validModeFound = true;
+                validModeFound = true;
                 break;
-
+            }
+            
             default:
                 sendNumericReply(client, "472", std::string(1, mode) + " :is unknown mode char to me");
                 continue;
         }
     }
-
-    // Broadcast le changement de mode à tous les membres si mode valide
-    if (validModeFound)
-	{
-    	std::string modeMsg = getClientPrefix(client) + " MODE " + target + " " + modeParams + "\r\n";
-    	channel->broadcastMessageAll(modeMsg);
-    	std::cout << "[MODE] " << client.getNickname() << " set mode " << modeParams << " on " << target << std::endl;
-	}
+    
+    // Broadcast seulement si au moins un mode valide a été appliqué
+    if (validModeFound && !broadcastModes.empty()) {
+        std::string modeMsg = getClientPrefix(client) + " MODE " + target + " " + broadcastModes + broadcastParams + "\r\n";
+        channel->broadcastMessageAll(modeMsg);
+        std::cout << "[MODE] " << client.getNickname() << " set mode " << broadcastModes << broadcastParams << " on " << target << std::endl;
+    }
 }
